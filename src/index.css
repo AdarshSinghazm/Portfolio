@@ -18,6 +18,86 @@
     overflow-x: hidden;
   }
 
+  /* ===== DARK MODE OVERRIDES ===== */
+  html.dark body {
+    background-color: #0F0F0F;
+    color: #F0EDE8;
+  }
+
+  /* Section & Footer backgrounds */
+  html.dark section,
+  html.dark footer {
+    background-color: #0F0F0F !important;
+    color: #F0EDE8 !important;
+  }
+
+  /* Cards & white panels */
+  html.dark .bg-white,
+  html.dark .bg-white\/70 {
+    background-color: #1C1C1C !important;
+  }
+
+  /* Muted text */
+  html.dark .text-gray-500,
+  html.dark .text-gray-600,
+  html.dark .text-gray-400 {
+    color: #9A9A9A !important;
+  }
+
+  /* Dark text that should become light */
+  html.dark .text-\[\#1A1A1A\],
+  html.dark .text-\[\#2A2A2A\] {
+    color: #F0EDE8 !important;
+  }
+
+  /* Borders */
+  html.dark .border-gray-200,
+  html.dark .border-gray-300 {
+    border-color: #2A2A2A !important;
+  }
+
+  html.dark .border-white\/50 {
+    border-color: rgba(255,255,255,0.08) !important;
+  }
+
+  /* Light gray backgrounds */
+  html.dark .bg-gray-100,
+  html.dark .bg-gray-200 {
+    background-color: #1A1A1A !important;
+  }
+
+  html.dark .bg-\[\#FDFBF7\] {
+    background-color: #0F0F0F !important;
+  }
+
+  /* Hover states */
+  html.dark .hover\:bg-\[\#9A1B1E\]:hover {
+    background-color: #9A1B1E !important;
+  }
+
+  /* Navbar & marquee strip */
+  html.dark .bg-white.py-6 {
+    background-color: #0F0F0F !important;
+    border-color: #2A2A2A !important;
+  }
+
+  /* Box shadows softer in dark */
+  html.dark .shadow-2xl {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  html.dark .shadow-xl {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  /* Tag pills */
+  html.dark .bg-gray-100.text-gray-600 {
+    background-color: #222222 !important;
+    color: #9A9A9A !important;
+    border-color: #333333 !important;
+  }
+
+
   /* Hide scrollbar for cleaner look */
   ::-webkit-scrollbar {
     width: 0px;

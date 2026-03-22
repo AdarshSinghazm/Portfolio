@@ -1,9 +1,11 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
-import { ArrowRight, Code2, Database, BrainCircuit, Terminal, LineChart } from "lucide-react";
+import { ArrowRight, Code2, Database, BrainCircuit, Terminal, LineChart, Sun, Moon } from "lucide-react";
+import { useTheme } from "./ThemeContext";
 
 export default function HeroSection() {
     const containerRef = useRef<HTMLDivElement>(null);
+    const { theme, toggleTheme } = useTheme();
 
     useEffect(() => {
         const ctx = gsap.context(() => {
@@ -55,14 +57,26 @@ export default function HeroSection() {
                 <div className="font-bold tracking-widest text-sm flex items-center gap-2">
                     <span className="text-xl">✺</span> ADARSH
                 </div>
+                {/* Nav Links */}
                 <div className="hidden md:flex gap-8 text-sm font-semibold text-gray-600">
                     <a href="#about" className="hover:text-black transition-colors">About</a>
                     <a href="#portfolio" className="hover:text-black transition-colors">Portfolio</a>
                     <a href="#contact" className="hover:text-black transition-colors">Contact</a>
                 </div>
-                <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100">
-                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                    <span className="text-sm font-bold">Open to work</span>
+
+                {/* Right: Status + Theme Toggle */}
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={toggleTheme}
+                        className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center hover:border-[#9A1B1E] hover:text-[#9A1B1E] transition-all duration-300"
+                        aria-label="Toggle theme"
+                    >
+                        {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                    </button>
+                    <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100">
+                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                        <span className="text-sm font-bold">Open to work</span>
+                    </div>
                 </div>
             </div>
 
