@@ -1,5 +1,6 @@
 import HeroSection from './components/HeroSection';
 import AboutSection from './components/AboutSection';
+import SkillsSection from './components/SkillsSection';
 import DemoOne from './components/demo';
 import CustomCursor from './components/CustomCursor';
 import FeaturedProjects from './components/FeaturedProjects';
@@ -16,6 +17,7 @@ function App() {
         <CustomCursor />
         <HeroSection />
         <AboutSection />
+        <SkillsSection />
         <FeaturedProjects />
         <DemoOne />
         <Qualifications />
