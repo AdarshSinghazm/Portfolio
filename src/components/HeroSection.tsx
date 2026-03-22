@@ -108,8 +108,11 @@ export default function HeroSection() {
                 <div className="center-photo w-full md:w-1/3 flex justify-center items-center md:order-2 relative h-[45vh] md:h-[65vh]">
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-[radial-gradient(#d1cfc7_1px,transparent_1px)] [background-size:12px_12px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_20%,transparent_100%)] z-[-1]"></div>
                     <div 
-                        className="relative w-full max-w-[280px] md:max-w-[400px] h-[95%] hover:scale-[1.02] transition-transform duration-500"
+                        className="relative w-full max-w-[280px] md:max-w-[400px] h-[95%] hover:scale-[1.02] transition-all duration-700"
                         style={{
+                            opacity: theme === 'dark' ? 0 : 1,
+                            transform: theme === 'dark' ? 'scale(0.92) translateY(20px)' : 'scale(1) translateY(0px)',
+                            transition: 'opacity 0.7s ease, transform 0.7s ease',
                             maskImage: ["linear-gradient(to bottom, transparent 0%, black 12%, black 58%, transparent 96%)", "linear-gradient(to right, transparent 0%, black 14%, black 86%, transparent 100%)"].join(", "),
                             WebkitMaskImage: ["linear-gradient(to bottom, transparent 0%, black 12%, black 58%, transparent 96%)", "linear-gradient(to right, transparent 0%, black 14%, black 86%, transparent 100%)"].join(", "),
                             maskComposite: "intersect",
