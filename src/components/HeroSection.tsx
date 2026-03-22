@@ -43,10 +43,8 @@ export default function HeroSection() {
     }, []);
 
     const scrollToWork = () => {
-        window.scrollTo({
-            top: window.innerHeight,
-            behavior: "smooth"
-        });
+        const el = document.getElementById('portfolio');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
     };
 
     return (
