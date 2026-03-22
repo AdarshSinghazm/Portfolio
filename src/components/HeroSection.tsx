@@ -73,17 +73,17 @@ export default function HeroSection() {
                 </h1>
             </div>
 
-            {/* Central Layout */}
-            <div className="relative z-10 flex-1 flex flex-col md:flex-row items-center justify-between px-8 md:px-24 mt-12 md:mt-24">
+            {/* Central Layout — Mobile: stacked column, Desktop: three columns */}
+            <div className="relative z-10 flex-1 flex flex-col md:flex-row items-center justify-between px-4 md:px-24 mt-4 md:mt-24 gap-6 md:gap-0">
                 
-                {/* Left Side: Bio */}
-                <div className="side-fade w-full md:w-1/3 flex flex-col gap-6 order-2 md:order-1 mt-12 md:mt-40 lg:mt-64 text-center md:text-left bg-white/70 backdrop-blur-lg p-8 rounded-3xl border border-white/50 shadow-2xl relative z-10">
-                    <p className="text-xl md:text-2xl font-medium leading-relaxed text-[#2A2A2A] max-w-sm mx-auto md:mx-0 drop-shadow-sm">
+                {/* Left Side: Bio — hidden on mobile, shown on desktop */}
+                <div className="side-fade hidden md:flex w-full md:w-1/3 flex-col gap-6 md:order-1 md:mt-40 lg:mt-64 text-left bg-white/70 backdrop-blur-lg p-8 rounded-3xl border border-white/50 shadow-2xl relative z-10">
+                    <p className="text-xl md:text-2xl font-medium leading-relaxed text-[#2A2A2A] max-w-sm drop-shadow-sm">
                         Hey there! I'm a Data Scientist & Machine Learning Engineer building predictive models and intelligent web apps.
                     </p>
                     <button 
                         onClick={scrollToWork}
-                        className="group flex w-max items-center justify-center md:justify-start gap-2 text-md font-bold tracking-widest uppercase hover:text-[#9A1B1E] transition-colors"
+                        className="group flex w-max items-center gap-2 text-md font-bold tracking-widest uppercase hover:text-[#9A1B1E] transition-colors"
                     >
                         // View Projects
                         <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
@@ -91,22 +91,13 @@ export default function HeroSection() {
                 </div>
 
                 {/* Center: Photo Container */}
-                <div className="center-photo w-full md:w-1/3 flex justify-center items-center order-1 md:order-2 relative h-[50vh] md:h-[65vh]">
-                    {/* A soft dotted background behind the image for texture */}
+                <div className="center-photo w-full md:w-1/3 flex justify-center items-center md:order-2 relative h-[45vh] md:h-[65vh]">
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-[radial-gradient(#d1cfc7_1px,transparent_1px)] [background-size:12px_12px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_20%,transparent_100%)] z-[-1]"></div>
-                    
-                    {/* Blended Hero Image - edges fade from all four sides */}
                     <div 
-                        className="relative w-full max-w-[400px] h-[95%] hover:scale-[1.02] transition-transform duration-500"
+                        className="relative w-full max-w-[280px] md:max-w-[400px] h-[95%] hover:scale-[1.02] transition-transform duration-500"
                         style={{
-                            maskImage: [
-                                "linear-gradient(to bottom, transparent 0%, black 12%, black 58%, transparent 96%)",
-                                "linear-gradient(to right, transparent 0%, black 14%, black 86%, transparent 100%)"
-                            ].join(", "),
-                            WebkitMaskImage: [
-                                "linear-gradient(to bottom, transparent 0%, black 12%, black 58%, transparent 96%)",
-                                "linear-gradient(to right, transparent 0%, black 14%, black 86%, transparent 100%)"
-                            ].join(", "),
+                            maskImage: ["linear-gradient(to bottom, transparent 0%, black 12%, black 58%, transparent 96%)", "linear-gradient(to right, transparent 0%, black 14%, black 86%, transparent 100%)"].join(", "),
+                            WebkitMaskImage: ["linear-gradient(to bottom, transparent 0%, black 12%, black 58%, transparent 96%)", "linear-gradient(to right, transparent 0%, black 14%, black 86%, transparent 100%)"].join(", "),
                             maskComposite: "intersect",
                             WebkitMaskComposite: "source-in"
                         }}
@@ -120,16 +111,29 @@ export default function HeroSection() {
                     </div>
                 </div>
 
-                {/* Right Side: Skills */}
-                <div className="side-fade w-full md:w-1/3 flex flex-col items-center md:items-end gap-4 order-3 mt-12 md:mt-40 lg:mt-64 relative z-10">
+                {/* Right Side: Skills — hidden on mobile */}
+                <div className="side-fade hidden md:flex w-full md:w-1/3 flex-col items-end gap-4 md:order-3 md:mt-40 lg:mt-64 relative z-10">
                     <div className="bg-white/70 backdrop-blur-lg p-8 rounded-3xl border border-white/50 shadow-2xl">
-                        <ul className="text-lg md:text-xl text-center md:text-right font-medium flex flex-col gap-4 drop-shadow-sm">
+                        <ul className="text-xl text-right font-medium flex flex-col gap-4 drop-shadow-sm">
                             <li className="text-gray-500 hover:text-black transition-colors cursor-pointer">Machine Learning</li>
                             <li className="text-[#9A1B1E] font-bold">Data Science</li>
                             <li className="text-gray-500 hover:text-black transition-colors cursor-pointer">React / Web Dev</li>
                             <li className="text-gray-500 hover:text-black transition-colors cursor-pointer">Algorithms</li>
                         </ul>
                     </div>
+                </div>
+
+                {/* Mobile-only: compact bio below the photo */}
+                <div className="flex md:hidden flex-col items-center text-center gap-4 px-4 pb-4 z-10">
+                    <p className="text-base font-medium leading-relaxed text-[#2A2A2A]">
+                        Data Scientist & ML Engineer — building predictive models and intelligent web apps.
+                    </p>
+                    <button 
+                        onClick={scrollToWork}
+                        className="group flex items-center gap-2 text-sm font-bold tracking-widest uppercase text-[#9A1B1E]"
+                    >
+                        // View Projects <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </button>
                 </div>
             </div>
 

@@ -76,7 +76,7 @@ export default function Qualifications() {
     }, []);
 
     return (
-        <section ref={sectionRef} className="py-24 px-6 md:px-12 lg:px-24 bg-[#FDFBF7] text-[#1A1A1A] w-full relative z-30">
+        <section ref={sectionRef} className="py-16 md:py-24 px-6 md:px-12 lg:px-24 bg-[#FDFBF7] text-[#1A1A1A] w-full relative z-30">
             <div className="text-center mb-16 md:mb-24 qual-header">
                 <p className="text-gray-500 uppercase tracking-widest text-sm mb-4 font-semibold">Education & Certifications</p>
                 <h2 className="text-5xl md:text-6xl font-bold font-serif italic text-[#9A1B1E]">Qualifications</h2>

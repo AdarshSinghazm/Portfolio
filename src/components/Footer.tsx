@@ -36,13 +36,13 @@ export default function Footer() {
     };
 
     return (
-        <footer id="contact" ref={footerRef} className="py-24 px-6 md:px-12 lg:px-24 bg-[#FDFBF7] text-[#1A1A1A] w-full relative z-30 overflow-hidden rounded-t-[3rem] border-t border-gray-300 shadow-[0_-10px_40px_rgba(0,0,0,0.03)]">
+        <footer id="contact" ref={footerRef} className="py-16 md:py-24 px-6 md:px-12 lg:px-24 bg-[#FDFBF7] text-[#1A1A1A] w-full relative z-30 overflow-hidden rounded-t-[3rem] border-t border-gray-300 shadow-[0_-10px_40px_rgba(0,0,0,0.03)]">
             <div className="flex flex-col items-center justify-center text-center mb-20 md:mb-32">
                 <p className="text-gray-500 tracking-widest uppercase text-sm font-semibold mb-6">Have an idea?</p>
-                <h2 ref={textRef} className="text-6xl md:text-[10rem] font-bold tracking-tighter leading-none interactable hover:text-[#9A1B1E] transition-colors cursor-pointer text-[#1A1A1A]">
+                <h2 ref={textRef} className="text-[3rem] sm:text-6xl md:text-[8rem] lg:text-[10rem] font-bold tracking-tighter leading-none interactable hover:text-[#9A1B1E] transition-colors cursor-pointer text-[#1A1A1A]">
                     Let's Talk
                 </h2>
-                <a href="mailto:adarshengsingh@gmail.com" className="mt-12 text-2xl md:text-4xl font-serif italic border-b border-gray-300 pb-2 hover:border-[#9A1B1E] hover:text-[#9A1B1E] transition-colors interactable">
+                <a href="mailto:adarshengsingh@gmail.com" className="mt-8 md:mt-12 text-base md:text-2xl lg:text-4xl font-serif italic border-b border-gray-300 pb-2 hover:border-[#9A1B1E] hover:text-[#9A1B1E] transition-colors interactable break-all text-center">
                     adarshengsingh@gmail.com
                 </a>
             </div>

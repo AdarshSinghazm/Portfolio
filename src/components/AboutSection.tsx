@@ -37,10 +37,10 @@ export default function AboutSection() {
         <section
             ref={sectionRef}
             id="about"
-            className="py-24 px-6 md:px-12 lg:px-24 bg-[#FDFBF7] text-[#1A1A1A] w-full relative z-30 border-t border-gray-200"
+            className="py-16 md:py-24 px-6 md:px-12 lg:px-24 bg-[#FDFBF7] text-[#1A1A1A] w-full relative z-30 border-t border-gray-200"
         >
             {/* Section Label */}
-            <p className="text-gray-500 uppercase tracking-widest text-sm mb-16 font-semibold">About Me</p>
+            <p className="text-gray-500 uppercase tracking-widest text-sm mb-8 md:mb-16 font-semibold">About Me</p>
 
             <div className="flex flex-col lg:flex-row gap-16 lg:gap-24 items-start">
 
@@ -76,7 +76,7 @@ export default function AboutSection() {
                 {/* RIGHT — Bio Text */}
                 <div className="about-right lg:w-1/2 flex flex-col gap-8 pt-2">
 
-                    <div className="flex flex-col gap-6 text-lg md:text-xl text-gray-600 leading-relaxed">
+                    <div className="flex flex-col gap-5 text-base md:text-lg lg:text-xl text-gray-600 leading-relaxed">
                         <p>
                             I'm a <span className="font-bold text-[#1A1A1A]">B.Tech Computer Science (Data Science)</span> student at <span className="font-bold text-[#1A1A1A]">GLA University</span>, focused on building data-driven applications and intelligent systems that solve real problems.
                         </p>

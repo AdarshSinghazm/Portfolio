@@ -69,7 +69,7 @@ export default function Testimonials() {
     }, []);
 
     return (
-        <section ref={sectionRef} className="py-24 px-6 md:px-12 lg:px-24 bg-[#FDFBF7] text-[#1A1A1A] w-full relative z-30 border-t border-gray-200">
+        <section ref={sectionRef} className="py-16 md:py-24 px-6 md:px-12 lg:px-24 bg-[#FDFBF7] text-[#1A1A1A] w-full relative z-30 border-t border-gray-200">
             <div className="flex flex-col items-center text-center mb-16 md:mb-24 values-header">
                 <p className="text-gray-500 uppercase tracking-widest text-sm mb-4 font-semibold">My Philosophy</p>
                 <h2 className="text-5xl md:text-7xl font-bold font-serif italic max-w-3xl text-[#9A1B1E]">What defines me</h2>

@@ -68,7 +68,7 @@ export default function Experiences() {
     }, []);
 
     return (
-        <section ref={sectionRef} className="py-24 px-6 md:px-12 lg:px-24 bg-[#FDFBF7] text-[#1A1A1A] w-full relative z-30 border-t border-gray-200">
+        <section ref={sectionRef} className="py-16 md:py-24 px-6 md:px-12 lg:px-24 bg-[#FDFBF7] text-[#1A1A1A] w-full relative z-30 border-t border-gray-200">
             <div className="flex flex-col lg:flex-row gap-16 md:gap-24">
 
                 <div className="w-full lg:w-1/3 exp-header">
