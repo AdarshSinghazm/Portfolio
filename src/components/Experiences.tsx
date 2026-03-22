@@ -72,10 +72,10 @@ export default function Experiences() {
             <div className="flex flex-col lg:flex-row gap-16 md:gap-24">
 
                 <div className="w-full lg:w-1/3 exp-header">
-                    <p className="text-gray-500 uppercase tracking-widest text-sm mb-4 font-semibold">Career</p>
-                    <h2 className="text-5xl md:text-7xl font-bold font-serif italic mb-8 text-[#9A1B1E]">Work<br />Experience</h2>
+                    <p className="text-gray-500 uppercase tracking-widest text-sm mb-4 font-semibold">Journey</p>
+                    <h2 className="text-5xl md:text-7xl font-bold font-serif italic mb-8 text-[#9A1B1E]">My<br />Journey</h2>
                     <p className="text-gray-600 leading-relaxed text-lg max-w-sm">
-                        A timeline of my professional journey, building tools and experiences for millions of users worldwide.
+                        A timeline of my journey in building projects, learning new technologies, and gaining hands-on experience through hackathons and real-world problem solving.
                     </p>
                 </div>
 
