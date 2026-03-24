@@ -1,127 +1,52 @@
 import type React from 'react';
-import { useRef, useMemo, useCallback, useState, useEffect } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { useRef, useMemo, useState, useEffect } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 import * as THREE from 'three';
 
 type ImageItem = string | { src: string; alt?: string };
 
-interface FadeSettings {
-    fadeIn: {
-        start: number;
-        end: number;
-    };
-    fadeOut: {
-        start: number;
-        end: number;
-    };
-}
-
-interface BlurSettings {
-    blurIn: {
-        start: number;
-        end: number;
-    };
-    blurOut: {
-        start: number;
-        end: number;
-    };
-    maxBlur: number;
-}
-
 interface InfiniteGalleryProps {
     images: ImageItem[];
     speed?: number;
-    zSpacing?: number;
-    visibleCount?: number;
-    falloff?: { near: number; far: number };
-    fadeSettings?: FadeSettings;
-    blurSettings?: BlurSettings;
     className?: string;
     style?: React.CSSProperties;
+    // Keep unused props to avoid breaking consumers
+    zSpacing?: number;
+    visibleCount?: number;
+    falloff?: any;
+    fadeSettings?: any;
+    blurSettings?: any;
 }
 
-interface PlaneData {
-    index: number;
-    z: number;
-    imageIndex: number;
-    x: number;
-    y: number;
-}
-
-const DEFAULT_DEPTH_RANGE = 50;
-const MAX_HORIZONTAL_OFFSET = 8;
-const MAX_VERTICAL_OFFSET = 8;
-
-const createClothMaterial = () => {
+const createGridMaterial = () => {
     return new THREE.ShaderMaterial({
         transparent: true,
         uniforms: {
             map: { value: null },
             opacity: { value: 1.0 },
+            brightness: { value: 1.0 },
             blurAmount: { value: 0.0 },
-            scrollForce: { value: 0.0 },
-            time: { value: 0.0 },
-            isHovered: { value: 0.0 },
         },
         vertexShader: `
-      uniform float scrollForce;
-      uniform float time;
-      uniform float isHovered;
       varying vec2 vUv;
-      varying vec3 vNormal;
-      
       void main() {
         vUv = uv;
-        vNormal = normal;
-        
-        vec3 pos = position;
-        
-        // Create smooth curving based on scroll force
-        float curveIntensity = scrollForce * 0.3;
-        
-        // Base curve across the plane based on distance from center
-        float distanceFromCenter = length(pos.xy);
-        float curve = distanceFromCenter * distanceFromCenter * curveIntensity;
-        
-        // Add gentle cloth-like ripples
-        float ripple1 = sin(pos.x * 2.0 + scrollForce * 3.0) * 0.02;
-        float ripple2 = sin(pos.y * 2.5 + scrollForce * 2.0) * 0.015;
-        float clothEffect = (ripple1 + ripple2) * abs(curveIntensity) * 2.0;
-        
-        // Flag waving effect when hovered
-        float flagWave = 0.0;
-        if (isHovered > 0.5) {
-          // Create flag-like wave from left to right
-          float wavePhase = pos.x * 3.0 + time * 8.0;
-          float waveAmplitude = sin(wavePhase) * 0.1;
-          // Damping effect - stronger wave on the right side (free edge)
-          float dampening = smoothstep(-0.5, 0.5, pos.x);
-          flagWave = waveAmplitude * dampening;
-          
-          // Add secondary smaller waves for more realistic flag motion
-          float secondaryWave = sin(pos.x * 5.0 + time * 12.0) * 0.03 * dampening;
-          flagWave += secondaryWave;
-        }
-        
-        // Apply Z displacement for curving effect (inverted) with cloth ripples and flag wave
-        pos.z -= (curve + clothEffect + flagWave);
-        
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }
     `,
         fragmentShader: `
       uniform sampler2D map;
       uniform float opacity;
+      uniform float brightness;
       uniform float blurAmount;
-      uniform float scrollForce;
       varying vec2 vUv;
-      varying vec3 vNormal;
       
       void main() {
         vec4 color = texture2D(map, vUv);
+        color.rgb *= brightness;
         
-        // Simple blur approximation
         if (blurAmount > 0.0) {
           vec2 texelSize = 1.0 / vec2(textureSize(map, 0));
           vec4 blurred = vec4(0.0);
@@ -138,26 +63,30 @@ const createClothMaterial = () => {
           color = blurred / total;
         }
         
-        // Add subtle lighting effect based on curving
-        float curveHighlight = abs(scrollForce) * 0.05;
-        color.rgb += vec3(curveHighlight * 0.1);
-        
         gl_FragColor = vec4(color.rgb, color.a * opacity);
       }
     `,
     });
 };
 
-function ImagePlane({
+function GridPlane({
+    index,
     texture,
-    position,
-    scale,
     material,
+    isActive,
+    isDimmed,
+    gridPos,
+    cameraPos,
+    onClick,
 }: {
+    index: number;
     texture: THREE.Texture;
-    position: [number, number, number];
-    scale: [number, number, number];
     material: THREE.ShaderMaterial;
+    isActive: boolean;
+    isDimmed: boolean;
+    gridPos: THREE.Vector3;
+    cameraPos: THREE.Vector3;
+    onClick: (idx: number) => void;
 }) {
     const meshRef = useRef<THREE.Mesh>(null);
     const [isHovered, setIsHovered] = useState(false);
@@ -165,330 +94,229 @@ function ImagePlane({
     useEffect(() => {
         if (material && texture) {
             material.uniforms.map.value = texture;
+            texture.colorSpace = THREE.SRGBColorSpace;
         }
     }, [material, texture]);
 
-    useEffect(() => {
-        if (material && material.uniforms) {
-            material.uniforms.isHovered.value = isHovered ? 1.0 : 0.0;
+    useFrame((_, delta) => {
+        if (!meshRef.current) return;
+
+        // Mobile responsiveness check logic (assuming viewport width ~5-7 units on small screens depending on aspect ratio)
+        // We'll pass isMobile as a prop, but here we can just scale based on viewport context from the parent if needed,
+        // or just let the parent scale the camera/canvas. For individual plane max-size:
+        const isMobile = window.innerWidth < 768;
+
+        const imgAspect = texture.image ? texture.image.width / texture.image.height : 1;
+
+        if (isActive) {
+            // Screen-filling size
+            const maxW = isMobile ? 4.0 : 6.5;
+            const scaleX = imgAspect > 1 ? maxW * imgAspect : maxW;
+            const scaleY = imgAspect > 1 ? maxW : maxW / imgAspect;
+
+            // Target perfectly in front of the camera
+            // Camera is at Z = 10. We move the plane to Z = 7 relative to the active camera.
+            const targetPos = new THREE.Vector3(cameraPos.x, cameraPos.y, isMobile ? 8.0 : 7.5);
+            
+            meshRef.current.position.lerp(targetPos, delta * 6.0);
+            meshRef.current.scale.lerp(new THREE.Vector3(scaleX, scaleY, 1), delta * 6.0);
+            
+            material.uniforms.opacity.value = THREE.MathUtils.lerp(material.uniforms.opacity.value, 1.0, delta * 6.0);
+            material.uniforms.blurAmount.value = THREE.MathUtils.lerp(material.uniforms.blurAmount.value, 0.0, delta * 6.0);
+            material.uniforms.brightness.value = THREE.MathUtils.lerp(material.uniforms.brightness.value, 1.0, delta * 6.0);
+            meshRef.current.renderOrder = 100;
+            material.depthTest = false; // Render entirely on top
+        } else {
+            // Base Grid Size
+            const baseScaleMult = isHovered && !isDimmed ? 1.05 : 1.0;
+            const scaleX = (imgAspect > 1 ? 4.0 * imgAspect : 4.0) * baseScaleMult;
+            const scaleY = (imgAspect > 1 ? 4.0 : 4.0 / imgAspect) * baseScaleMult;
+            
+            // Tweak Z popping up slightly on hover if not dimmed
+            const targetZ = isHovered && !isDimmed ? gridPos.z + 0.5 : gridPos.z;
+            const targetPos = new THREE.Vector3(gridPos.x, gridPos.y, targetZ);
+
+            meshRef.current.position.lerp(targetPos, delta * 6.0);
+            meshRef.current.scale.lerp(new THREE.Vector3(scaleX, scaleY, 1), delta * 6.0);
+
+            // Shading and Dimming
+            const targetOpacity = isDimmed ? 0.3 : 1.0;
+            const targetBlur = isDimmed ? 2.5 : 0.0;
+            const targetBrightness = isDimmed ? 0.3 : (isHovered ? 1.1 : 1.0);
+
+            material.uniforms.opacity.value = THREE.MathUtils.lerp(material.uniforms.opacity.value, targetOpacity, delta * 8.0);
+            material.uniforms.blurAmount.value = THREE.MathUtils.lerp(material.uniforms.blurAmount.value, targetBlur, delta * 8.0);
+            material.uniforms.brightness.value = THREE.MathUtils.lerp(material.uniforms.brightness.value, targetBrightness, delta * 8.0);
+            meshRef.current.renderOrder = isHovered ? 10 : 0;
+            material.depthTest = true;
         }
-    }, [material, isHovered]);
+    });
 
     return (
         <mesh
             ref={meshRef}
-            position={position}
-            scale={scale}
             material={material}
-            onPointerEnter={() => setIsHovered(true)}
-            onPointerLeave={() => setIsHovered(false)}
+            onClick={(e) => {
+                e.stopPropagation();
+                onClick(index);
+            }}
+            onPointerEnter={(e) => {
+                e.stopPropagation();
+                if (!isDimmed) {
+                    setIsHovered(true);
+                    document.body.style.cursor = 'pointer';
+                }
+            }}
+            onPointerLeave={(e) => {
+                e.stopPropagation();
+                setIsHovered(false);
+                document.body.style.cursor = 'auto'; // Reset cursor safely
+            }}
         >
-            <planeGeometry args={[1, 1, 32, 32]} />
+            <planeGeometry args={[1, 1, 16, 16]} />
         </mesh>
     );
 }
 
-function GalleryScene({
+function GridScene({
     images,
     speed = 1,
-    visibleCount = 8,
-    fadeSettings = {
-        fadeIn: { start: 0.05, end: 0.15 },
-        fadeOut: { start: 0.85, end: 0.95 },
-    },
-    blurSettings = {
-        blurIn: { start: 0.0, end: 0.1 },
-        blurOut: { start: 0.9, end: 1.0 },
-        maxBlur: 3.0,
-    },
-}: Omit<InfiniteGalleryProps, 'className' | 'style'>) {
-    const [scrollVelocity, setScrollVelocity] = useState(0);
-    const [autoPlay, setAutoPlay] = useState(true);
-    const lastInteraction = useRef(Date.now());
-
+    targetScrollY,
+    activeId,
+    setActiveId,
+}: {
+    images: ImageItem[];
+    speed?: number;
+    targetScrollY: React.MutableRefObject<number>;
+    activeId: number | null;
+    setActiveId: (id: number | null) => void;
+}) {
+    const { camera, size } = useThree();
+    const isMobile = size.width < 768;
+    const isTablet = size.width >= 768 && size.width < 1024;
+    
     const normalizedImages = useMemo(
-        () =>
-            images.map((img) =>
-                typeof img === 'string' ? { src: img, alt: '' } : img
-            ),
+        () => images.map((img) => (typeof img === 'string' ? { src: img, alt: '' } : img)),
         [images]
     );
 
     const textures = useTexture(normalizedImages.map((img) => img.src));
+    const totalImages = textures.length;
 
-    // Create materials pool
+    // A unified stable mesh material pool
     const materials = useMemo(
-        () => Array.from({ length: visibleCount }, () => createClothMaterial()),
-        [visibleCount]
+        () => Array.from({ length: totalImages }, () => createGridMaterial()),
+        [totalImages]
     );
 
-    const spatialPositions = useMemo(() => {
-        const positions: { x: number; y: number }[] = [];
-        const maxHorizontalOffset = MAX_HORIZONTAL_OFFSET;
-        const maxVerticalOffset = MAX_VERTICAL_OFFSET;
+    // Calculate permanent grid positions for every photo
+    const gridCols = isMobile ? 1 : (isTablet ? 2 : 3);
+    const spacingX = isMobile ? 0 : 4.5;
+    const spacingY = isMobile ? 5.5 : 4.5;
+    
+    // Center the grid dynamically based on the amount of columns
+    const xOffset = -(gridCols - 1) * spacingX * 0.5;
 
-        for (let i = 0; i < visibleCount; i++) {
-            // Create varied distribution patterns for both axes
-            const horizontalAngle = (i * 2.618) % (Math.PI * 2); // Golden angle for natural distribution
-            const verticalAngle = (i * 1.618 + Math.PI / 3) % (Math.PI * 2); // Offset angle for vertical
-
-            const horizontalRadius = (i % 3) * 1.2; // Vary the distance from center
-            const verticalRadius = ((i + 1) % 4) * 0.8; // Different pattern for vertical
-
-            const x =
-                (Math.sin(horizontalAngle) * horizontalRadius * maxHorizontalOffset) /
-                3;
-            const y =
-                (Math.cos(verticalAngle) * verticalRadius * maxVerticalOffset) / 4;
-
-            positions.push({ x, y });
-        }
-
-        return positions;
-    }, [visibleCount]);
-
-    const totalImages = normalizedImages.length;
-    const depthRange = DEFAULT_DEPTH_RANGE;
-
-    // Initialize plane data
-    const planesData = useRef<PlaneData[]>(
-        Array.from({ length: visibleCount }, (_, i) => ({
-            index: i,
-            z: visibleCount > 0 ? ((depthRange / visibleCount) * i) % depthRange : 0,
-            imageIndex: totalImages > 0 ? i % totalImages : 0,
-            x: spatialPositions[i]?.x ?? 0, // Use spatial positions for x
-            y: spatialPositions[i]?.y ?? 0, // Use spatial positions for y
-        }))
-    );
-
-    useEffect(() => {
-        planesData.current = Array.from({ length: visibleCount }, (_, i) => ({
-            index: i,
-            z:
-                visibleCount > 0
-                    ? ((depthRange / Math.max(visibleCount, 1)) * i) % depthRange
-                    : 0,
-            imageIndex: totalImages > 0 ? i % totalImages : 0,
-            x: spatialPositions[i]?.x ?? 0,
-            y: spatialPositions[i]?.y ?? 0,
-        }));
-    }, [depthRange, spatialPositions, totalImages, visibleCount]);
-
-    // Handle scroll input
-    const handleWheel = useCallback(
-        (event: WheelEvent) => {
-            setScrollVelocity((prev) => prev + event.deltaY * 0.01 * speed);
-            setAutoPlay(false);
-            lastInteraction.current = Date.now();
-        },
-        [speed]
-    );
-
-    // Handle keyboard input
-    const handleKeyDown = useCallback(
-        (event: KeyboardEvent) => {
-            if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
-                setScrollVelocity((prev) => prev - 2 * speed);
-                setAutoPlay(false);
-                lastInteraction.current = Date.now();
-            } else if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
-                setScrollVelocity((prev) => prev + 2 * speed);
-                setAutoPlay(false);
-                lastInteraction.current = Date.now();
-            }
-        },
-        [speed]
-    );
-
-    useEffect(() => {
-        const canvas = document.querySelector('canvas');
-        if (canvas) {
-            canvas.addEventListener('wheel', handleWheel, { passive: true });
-            document.addEventListener('keydown', handleKeyDown);
-
-            return () => {
-                canvas.removeEventListener('wheel', handleWheel);
-                document.removeEventListener('keydown', handleKeyDown);
+    const gridPositions = useMemo(() => {
+        return Array.from({ length: totalImages }).map((_, i) => {
+            const col = i % gridCols;
+            const row = Math.floor(i / gridCols);
+            // On mobile, keep it less twisted for cleaner view
+            const twistZ = isMobile ? (Math.random() - 0.5) * 0.08 : (Math.random() - 0.5) * 0.2;
+            const depthZ = (Math.random() - 0.5) * 0.5; 
+            
+            return {
+                x: xOffset + col * spacingX,
+                y: -row * spacingY,
+                z: depthZ,
+                rotZ: twistZ,
             };
-        }
-    }, [handleWheel, handleKeyDown]);
-
-    // Auto-play logic
-    useEffect(() => {
-        const interval = setInterval(() => {
-            if (Date.now() - lastInteraction.current > 3000) {
-                setAutoPlay(true);
-            }
-        }, 1000);
-        return () => clearInterval(interval);
-    }, []);
-
-    useFrame((state, delta) => {
-        // Apply auto-play
-        if (autoPlay) {
-            setScrollVelocity((prev) => prev + 0.3 * delta);
-        }
-
-        // Damping
-        setScrollVelocity((prev) => prev * 0.95);
-
-        // Update time uniform for all materials
-        const time = state.clock.getElapsedTime();
-        materials.forEach((material) => {
-            if (material && material.uniforms) {
-                material.uniforms.time.value = time;
-                material.uniforms.scrollForce.value = scrollVelocity;
-            }
         });
+    }, [totalImages, gridCols, spacingX, spacingY, xOffset, isMobile]);
 
-        // Update plane positions
-        const imageAdvance =
-            totalImages > 0 ? visibleCount % totalImages || totalImages : 0;
-        const totalRange = depthRange;
+    // Maximum scroll constraint based on Rows
+    const maxRows = Math.ceil(totalImages / gridCols);
+    const maxScrollY = Math.max(0, (maxRows - 1) * spacingY);
 
-        planesData.current.forEach((plane, i) => {
-            let newZ = plane.z + scrollVelocity * delta * 10;
-            let wrapsForward = 0;
-            let wrapsBackward = 0;
+    const scrollY = useRef(0);
 
-            if (newZ >= totalRange) {
-                wrapsForward = Math.floor(newZ / totalRange);
-                newZ -= totalRange * wrapsForward;
-            } else if (newZ < 0) {
-                wrapsBackward = Math.ceil(-newZ / totalRange);
-                newZ += totalRange * wrapsBackward;
-            }
+    useFrame((_, delta) => {
+        // Enforce scroll bounds cleanly
+        targetScrollY.current = Math.max(0, Math.min(targetScrollY.current, maxScrollY));
 
-            if (wrapsForward > 0 && imageAdvance > 0 && totalImages > 0) {
-                plane.imageIndex =
-                    (plane.imageIndex + wrapsForward * imageAdvance) % totalImages;
-            }
+        // Let the camera pan smoothly vertically
+        scrollY.current = THREE.MathUtils.lerp(scrollY.current, targetScrollY.current, delta * 5.0);
 
-            if (wrapsBackward > 0 && imageAdvance > 0 && totalImages > 0) {
-                const step = plane.imageIndex - wrapsBackward * imageAdvance;
-                plane.imageIndex = ((step % totalImages) + totalImages) % totalImages;
-            }
+        // Pan Camera logic: The camera naturally stares at Z=0, we move its Y coordinate to stare lower.
+        // We actually want the camera Y to follow -scrollY so it moves down along the grid!
+        camera.position.y = THREE.MathUtils.lerp(camera.position.y, -scrollY.current, delta * 5.0);
 
-            plane.z = ((newZ % totalRange) + totalRange) % totalRange;
-            plane.x = spatialPositions[i]?.x ?? 0;
-            plane.y = spatialPositions[i]?.y ?? 0;
-
-
-            // Calculate opacity based on fade settings
-            const normalizedPosition = plane.z / totalRange; // 0 to 1
-            let opacity = 1;
-
-            if (
-                normalizedPosition >= fadeSettings.fadeIn.start &&
-                normalizedPosition <= fadeSettings.fadeIn.end
-            ) {
-                // Fade in: opacity goes from 0 to 1 within the fade in range
-                const fadeInProgress =
-                    (normalizedPosition - fadeSettings.fadeIn.start) /
-                    (fadeSettings.fadeIn.end - fadeSettings.fadeIn.start);
-                opacity = fadeInProgress;
-            } else if (normalizedPosition < fadeSettings.fadeIn.start) {
-                // Before fade in starts: fully transparent
-                opacity = 0;
-            } else if (
-                normalizedPosition >= fadeSettings.fadeOut.start &&
-                normalizedPosition <= fadeSettings.fadeOut.end
-            ) {
-                // Fade out: opacity goes from 1 to 0 within the fade out range
-                const fadeOutProgress =
-                    (normalizedPosition - fadeSettings.fadeOut.start) /
-                    (fadeSettings.fadeOut.end - fadeSettings.fadeOut.start);
-                opacity = 1 - fadeOutProgress;
-            } else if (normalizedPosition > fadeSettings.fadeOut.end) {
-                // After fade out ends: fully transparent
-                opacity = 0;
-            }
-
-            // Clamp opacity between 0 and 1
-            opacity = Math.max(0, Math.min(1, opacity));
-
-            // Calculate blur based on blur settings
-            let blur = 0;
-
-            if (
-                normalizedPosition >= blurSettings.blurIn.start &&
-                normalizedPosition <= blurSettings.blurIn.end
-            ) {
-                // Blur in: blur goes from maxBlur to 0 within the blur in range
-                const blurInProgress =
-                    (normalizedPosition - blurSettings.blurIn.start) /
-                    (blurSettings.blurIn.end - blurSettings.blurIn.start);
-                blur = blurSettings.maxBlur * (1 - blurInProgress);
-            } else if (normalizedPosition < blurSettings.blurIn.start) {
-                // Before blur in starts: full blur
-                blur = blurSettings.maxBlur;
-            } else if (
-                normalizedPosition >= blurSettings.blurOut.start &&
-                normalizedPosition <= blurSettings.blurOut.end
-            ) {
-                // Blur out: blur goes from 0 to maxBlur within the blur out range
-                const blurOutProgress =
-                    (normalizedPosition - blurSettings.blurOut.start) /
-                    (blurSettings.blurOut.end - blurSettings.blurOut.start);
-                blur = blurSettings.maxBlur * blurOutProgress;
-            } else if (normalizedPosition > blurSettings.blurOut.end) {
-                // After blur out ends: full blur
-                blur = blurSettings.maxBlur;
-            }
-
-            // Clamp blur to reasonable values
-            blur = Math.max(0, Math.min(blurSettings.maxBlur, blur));
-
-            // Update material uniforms
-            const material = materials[i];
-            if (material && material.uniforms) {
-                material.uniforms.opacity.value = opacity;
-                material.uniforms.blurAmount.value = blur;
-            }
-        });
+        // Keep looking straight forward organically
+        const targetLookAt = new THREE.Vector3(camera.position.x, camera.position.y, 0);
+        camera.lookAt(targetLookAt);
     });
 
     if (normalizedImages.length === 0) return null;
 
     return (
-        <>
-            {planesData.current.map((plane, i) => {
-                const texture = textures[plane.imageIndex];
+        <group>
+            {Array.from({ length: totalImages }).map((_, i) => {
+                const node = gridPositions[i];
+                const texture = textures[i];
                 const material = materials[i];
-
                 if (!texture || !material) return null;
 
-                const worldZ = plane.z - depthRange / 2;
-
-                // Calculate scale to maintain aspect ratio
-                const imgAspect = texture.image as HTMLImageElement;
-                const aspect = imgAspect
-                    ? imgAspect.width / imgAspect.height
-                    : 1;
-                const scale: [number, number, number] =
-                    aspect > 1 ? [2 * aspect, 2, 1] : [2, 2 / aspect, 1];
+                const gridPos = new THREE.Vector3(node.x, node.y, node.z);
 
                 return (
-                    <ImagePlane
-                        key={plane.index}
-                        texture={texture}
-                        position={[plane.x, plane.y, worldZ]} // Position planes relative to camera center
-                        scale={scale}
-                        material={material}
-                    />
+                    // Wrap the meshes in a group representing their static slight rotations, 
+                    // freeing up the individual mesh strictly for popping up/down
+                    <group 
+                        key={i} 
+                        position={new THREE.Vector3(0, 0, 0)} 
+                        rotation={new THREE.Euler(0, 0, node.rotZ)}
+                    >
+                        <GridPlane
+                            index={i}
+                            texture={texture}
+                            material={material}
+                            gridPos={gridPos}
+                            cameraPos={camera.position}
+                            isActive={activeId === i}
+                            isDimmed={activeId !== null && activeId !== i}
+                            onClick={(idx) => {
+                                // Toggle behavior: tap an active one closes it, tap a closed one opens it.
+                                if (activeId === idx) {
+                                    setActiveId(null);
+                                    document.body.style.cursor = 'auto';
+                                } else {
+                                    setActiveId(idx);
+                                    document.body.style.cursor = 'auto'; // Reset pointer once clicked
+                                }
+                            }}
+                        />
+                    </group>
                 );
             })}
-        </>
+            
+            {/* Click Background to clear selection */}
+            <mesh 
+                position={[0, 0, -5]} 
+                visible={false} 
+                onClick={(e) => {
+                    e.stopPropagation();
+                    if (activeId !== null) setActiveId(null);
+                }}
+            >
+                <planeGeometry args={[100, 100]} />
+            </mesh>
+        </group>
     );
 }
 
-// Fallback component for when WebGL is not available
 function FallbackGallery({ images }: { images: ImageItem[] }) {
     const normalizedImages = useMemo(
-        () =>
-            images.map((img) =>
-                typeof img === 'string' ? { src: img, alt: '' } : img
-            ),
+        () => images.map((img) => (typeof img === 'string' ? { src: img, alt: '' } : img)),
         [images]
     );
 
@@ -513,22 +341,15 @@ function FallbackGallery({ images }: { images: ImageItem[] }) {
 
 export default function InfiniteGallery({
     images,
-    className = 'h-96 w-full',
+    className = 'h-[750px] w-full relative',
     style,
-    fadeSettings = {
-        fadeIn: { start: 0.05, end: 0.25 },
-        fadeOut: { start: 0.4, end: 0.43 },
-    },
-    blurSettings = {
-        blurIn: { start: 0.0, end: 0.1 },
-        blurOut: { start: 0.4, end: 0.43 },
-        maxBlur: 8.0,
-    },
+    speed = 1,
 }: InfiniteGalleryProps) {
     const [webglSupported, setWebglSupported] = useState(true);
+    const [activeId, setActiveId] = useState<number | null>(null);
+    const targetScrollY = useRef(0);
 
     useEffect(() => {
-        // Check WebGL support
         try {
             const canvas = document.createElement('canvas');
             const gl =
@@ -541,6 +362,30 @@ export default function InfiniteGallery({
         }
     }, []);
 
+    // Global Keydown to close modal
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setActiveId(null);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
+    const handleScrollUp = () => {
+        if (activeId !== null) return;
+        const spacingY = window.innerWidth < 768 ? 5.5 : 4.5;
+        targetScrollY.current = Math.max(0, targetScrollY.current - spacingY);
+    };
+
+    const handleScrollDown = () => {
+        if (activeId !== null) return;
+        const spacingY = window.innerWidth < 768 ? 5.5 : 4.5;
+        targetScrollY.current += spacingY;
+    };
+
     if (!webglSupported) {
         return (
             <div className={className} style={style}>
@@ -550,15 +395,64 @@ export default function InfiniteGallery({
     }
 
     return (
-        <div className={className} style={style}>
+        <div 
+            className={className} 
+            style={style}
+            onWheel={(e) => {
+                // If an image is expanded in center view, optionally lock scrolling.
+                // Or allow them to scroll away to dismiss it!
+                if (activeId !== null) {
+                    // Let's dismiss if they aggressively scroll heavily. Or just ignore it completely.
+                    if (Math.abs(e.deltaY) > 50) {
+                        setActiveId(null);
+                    }
+                } else {
+                    targetScrollY.current += (e.deltaY * 0.015) * speed;
+                }
+            }}
+            // Catch clicks safely on the React container to dismiss if they click very far outside geometry
+            onClick={(e) => {
+                if (activeId !== null) setActiveId(null);
+            }}
+        >
+            {activeId !== null && (
+                <div className="absolute top-4 right-4 z-50 text-white/50 hover:text-white pointer-events-none transition-opacity">
+                    <p className="bg-black/40 backdrop-blur-md px-4 py-2 rounded-full text-sm font-medium tracking-wide border border-white/10 shadow-xl">
+                        Click anywhere or press <kbd className="font-mono text-xs opacity-70">ESC</kbd> to close
+                    </p>
+                </div>
+            )}
+            
+            {activeId === null && (
+                <div className="absolute right-4 md:right-8 bottom-8 z-40 flex flex-col gap-3">
+                    <button 
+                        onClick={handleScrollUp}
+                        className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-md flex items-center justify-center text-white/80 hover:text-white transition-all transform hover:scale-110 active:scale-95 border border-white/10 shadow-xl"
+                        aria-label="Scroll Up"
+                    >
+                        <ChevronUp className="w-6 h-6 md:w-8 md:h-8" />
+                    </button>
+                    <button 
+                        onClick={handleScrollDown}
+                        className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-md flex items-center justify-center text-white/80 hover:text-white transition-all transform hover:scale-110 active:scale-95 border border-white/10 shadow-xl"
+                        aria-label="Scroll Down"
+                    >
+                        <ChevronDown className="w-6 h-6 md:w-8 md:h-8" />
+                    </button>
+                </div>
+            )}
+
             <Canvas
-                camera={{ position: [0, 0, 0], fov: 55 }}
+                camera={{ position: [0, 0, 10], fov: 60 }}
                 gl={{ antialias: true, alpha: true }}
             >
-                <GalleryScene
-                    images={images}
-                    fadeSettings={fadeSettings}
-                    blurSettings={blurSettings}
+                <ambientLight intensity={1} />
+                <GridScene 
+                    images={images} 
+                    speed={speed} 
+                    targetScrollY={targetScrollY}
+                    activeId={activeId}
+                    setActiveId={setActiveId}
                 />
             </Canvas>
         </div>
