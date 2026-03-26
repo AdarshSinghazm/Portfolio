@@ -106,7 +106,7 @@ function GridPlane({
         // or just let the parent scale the camera/canvas. For individual plane max-size:
         const isMobile = window.innerWidth < 768;
 
-        const imgAspect = texture.image ? texture.image.width / texture.image.height : 1;
+        const imgAspect = texture.image ? (texture.image as any).width / (texture.image as any).height : 1;
 
         if (isActive) {
             // Screen-filling size
@@ -180,13 +180,11 @@ function GridPlane({
 
 function GridScene({
     images,
-    speed = 1,
     targetScrollY,
     activeId,
     setActiveId,
 }: {
     images: ImageItem[];
-    speed?: number;
     targetScrollY: React.MutableRefObject<number>;
     activeId: number | null;
     setActiveId: (id: number | null) => void;
@@ -411,7 +409,7 @@ export default function InfiniteGallery({
                 }
             }}
             // Catch clicks safely on the React container to dismiss if they click very far outside geometry
-            onClick={(e) => {
+            onClick={() => {
                 if (activeId !== null) setActiveId(null);
             }}
         >
@@ -449,7 +447,6 @@ export default function InfiniteGallery({
                 <ambientLight intensity={1} />
                 <GridScene 
                     images={images} 
-                    speed={speed} 
                     targetScrollY={targetScrollY}
                     activeId={activeId}
                     setActiveId={setActiveId}
